@@ -7,6 +7,7 @@ import 'package:shopee_app/core/constants/app_constants.dart';
 import 'package:shopee_app/providers/dashboard_provider.dart';
 import 'package:shopee_app/providers/shop_analysis_provider.dart';
 import 'package:shopee_app/screens/home_screen.dart';
+import 'package:shopee_app/providers/product_list_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,6 +25,9 @@ class ShopeeApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => DashboardProvider()..loadData()),
         ChangeNotifierProvider(
           create: (_) => ShopAnalysisProvider()..loadData(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => ProductListProvider()..loadData(),
         ),
       ],
       child: MaterialApp(
