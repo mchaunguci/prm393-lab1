@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:shopee_app/core/theme/app_theme.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:provider/provider.dart';
+import 'package:shopee_app/firebase_options.dart';
+import 'package:shopee_app/core/constants/app_colors.dart';
 import 'package:shopee_app/core/constants/app_constants.dart';
+import 'package:shopee_app/providers/dashboard_provider.dart';
 import 'package:shopee_app/screens/home_screen.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const ShopeeApp());
 }
 
@@ -13,13 +18,23 @@ class ShopeeApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: AppConstants.appName,
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
-      themeMode: ThemeMode.system,
-      home: const HomeScreen(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => DashboardProvider()..loadData(),
+        ),
+      ],
+      child: MaterialApp(
+        title: AppConstants.appName,
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          useMaterial3: true,
+          brightness: Brightness.dark,
+          scaffoldBackgroundColor: AppColors.background,
+          colorSchemeSeed: AppColors.accent,
+        ),
+        home: const HomeScreen(),
+      ),
     );
   }
 }
