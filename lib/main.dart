@@ -5,6 +5,7 @@ import 'package:shopee_app/firebase_options.dart';
 import 'package:shopee_app/core/constants/app_colors.dart';
 import 'package:shopee_app/core/constants/app_constants.dart';
 import 'package:shopee_app/providers/dashboard_provider.dart';
+import 'package:shopee_app/providers/shop_analysis_provider.dart';
 import 'package:shopee_app/screens/home_screen.dart';
 
 void main() async {
@@ -20,8 +21,9 @@ class ShopeeApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => DashboardProvider()..loadData()),
         ChangeNotifierProvider(
-          create: (_) => DashboardProvider()..loadData(),
+          create: (_) => ShopAnalysisProvider()..loadData(),
         ),
       ],
       child: MaterialApp(
