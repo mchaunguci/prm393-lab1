@@ -14,6 +14,8 @@ enum ShopSortOption {
 }
 
 class ShopAnalysisProvider extends ChangeNotifier {
+  static const int shopsPerPage = 8;
+
   final FirestoreService _service = FirestoreService();
 
   List<Product> _products = [];
@@ -26,6 +28,7 @@ class ShopAnalysisProvider extends ChangeNotifier {
   ShopSortOption _sortOption = ShopSortOption.productCount;
   ShopAnalyticsItem? _selectedShop;
   DateTime? _lastUpdated;
+  int _currentPage = 1;
 
   List<Product> get products => _products;
   List<Shop> get shops => _shops;
@@ -37,6 +40,7 @@ class ShopAnalysisProvider extends ChangeNotifier {
   ShopSortOption get sortOption => _sortOption;
   ShopAnalyticsItem? get selectedShop => _selectedShop;
   DateTime? get lastUpdated => _lastUpdated;
+  int get currentPage => _currentPage;
 
   List<ShopAnalyticsItem> get shopStats {
     final filtered = _allShopStats.where((shop) {
@@ -69,6 +73,37 @@ class ShopAnalysisProvider extends ChangeNotifier {
   }
 
   List<ShopAnalyticsItem> get shopAnalytics => shopStats;
+
+  List<ShopAnalyticsItem> get pagedShopStats {
+    final filtered = shopStats;
+    if (filtered.isEmpty) return const [];
+
+    final startIndex = (_currentPage - 1) * shopsPerPage;
+    if (startIndex >= filtered.length) return const [];
+
+    return filtered.skip(startIndex).take(shopsPerPage).toList();
+  }
+
+  int get totalShopPages {
+    final total = shopStats.length;
+    if (total == 0) return 1;
+    return (total / shopsPerPage).ceil();
+  }
+
+  int get visibleShopStart {
+    final total = shopStats.length;
+    if (total == 0) return 0;
+    return (_currentPage - 1) * shopsPerPage + 1;
+  }
+
+  int get visibleShopEnd {
+    final total = shopStats.length;
+    if (total == 0) return 0;
+    return (_currentPage * shopsPerPage).clamp(0, total);
+  }
+
+  bool get canGoToPreviousShopPage => _currentPage > 1;
+  bool get canGoToNextShopPage => _currentPage < totalShopPages;
 
   int get totalShops => _allShopStats.length;
   int get totalProducts => _products.length;
@@ -133,6 +168,7 @@ class ShopAnalysisProvider extends ChangeNotifier {
       _shops = results[1] as List<Shop>;
       _allShopStats = _buildShopStats();
       _lastUpdated = DateTime.now();
+      _resetShopPage();
     } catch (e) {
       _error = e.toString();
     } finally {
@@ -143,16 +179,31 @@ class ShopAnalysisProvider extends ChangeNotifier {
 
   void searchShop(String keyword) {
     _searchQuery = keyword.trim();
+    _resetShopPage();
     notifyListeners();
   }
 
   void filterByLocation(String? location) {
     _selectedLocation = location;
+    _resetShopPage();
     notifyListeners();
   }
 
   void sortBy(ShopSortOption option) {
     _sortOption = option;
+    _resetShopPage();
+    notifyListeners();
+  }
+
+  void previousShopPage() {
+    if (!canGoToPreviousShopPage) return;
+    _currentPage -= 1;
+    notifyListeners();
+  }
+
+  void nextShopPage() {
+    if (!canGoToNextShopPage) return;
+    _currentPage += 1;
     notifyListeners();
   }
 
@@ -164,6 +215,10 @@ class ShopAnalysisProvider extends ChangeNotifier {
   void clearSelectedShop() {
     _selectedShop = null;
     notifyListeners();
+  }
+
+  void _resetShopPage() {
+    _currentPage = 1;
   }
 
   List<ShopAnalyticsItem> _buildShopStats() {
