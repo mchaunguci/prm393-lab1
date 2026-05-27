@@ -61,7 +61,16 @@ class ShopAnalysisScreen extends StatelessWidget {
                     const SizedBox(height: 24),
                     _ShopRankingTable(
                       shops: provider.shopStats,
+                      pagedShops: provider.pagedShopStats,
                       width: contentWidth,
+                      currentPage: provider.currentPage,
+                      totalPages: provider.totalShopPages,
+                      visibleStart: provider.visibleShopStart,
+                      visibleEnd: provider.visibleShopEnd,
+                      canGoPrevious: provider.canGoToPreviousShopPage,
+                      canGoNext: provider.canGoToNextShopPage,
+                      onPreviousPage: provider.previousShopPage,
+                      onNextPage: provider.nextShopPage,
                       onShopTap: (shop) =>
                           _openShopDetail(context, provider, shop),
                     ),
@@ -603,17 +612,38 @@ class _ProgressMetricRow extends StatelessWidget {
 
 class _ShopRankingTable extends StatelessWidget {
   final List<ShopAnalyticsItem> shops;
+  final List<ShopAnalyticsItem> pagedShops;
   final double width;
+  final int currentPage;
+  final int totalPages;
+  final int visibleStart;
+  final int visibleEnd;
+  final bool canGoPrevious;
+  final bool canGoNext;
+  final VoidCallback onPreviousPage;
+  final VoidCallback onNextPage;
   final ValueChanged<ShopAnalyticsItem> onShopTap;
 
   const _ShopRankingTable({
     required this.shops,
+    required this.pagedShops,
     required this.width,
+    required this.currentPage,
+    required this.totalPages,
+    required this.visibleStart,
+    required this.visibleEnd,
+    required this.canGoPrevious,
+    required this.canGoNext,
+    required this.onPreviousPage,
+    required this.onNextPage,
     required this.onShopTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final tableWidth = math.max(width, 1040.0);
+    final columns = _ShopTableColumns.forWidth(tableWidth - 32);
+
     return Container(
       width: width,
       decoration: _cardDecoration(),
@@ -653,23 +683,63 @@ class _ShopRankingTable extends StatelessWidget {
               ),
             )
           else
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: SizedBox(
-                width: 1152,
-                child: Column(
-                  children: [
-                    const _ShopTableHeader(),
-                    const Divider(color: AppColors.cardLight, height: 1),
-                    ...shops.map(
-                      (shop) => _ShopTableRow(
-                        shop: shop,
-                        onTap: () => onShopTap(shop),
-                      ),
+            Column(
+              children: [
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(
+                    width: tableWidth,
+                    child: Column(
+                      children: [
+                        _ShopTableHeader(columns: columns),
+                        const Divider(color: AppColors.cardLight, height: 1),
+                        ...pagedShops.map(
+                          (shop) => _ShopTableRow(
+                            shop: shop,
+                            columns: columns,
+                            onTap: () => onShopTap(shop),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
+                const Divider(color: AppColors.cardLight, height: 1),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  child: Wrap(
+                    spacing: 12,
+                    runSpacing: 10,
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: math.max(0.0, math.min(260.0, width - 32)),
+                        child: Text(
+                          'Hiển thị $visibleStart-$visibleEnd / ${Formatters.number(shops.length)} shop',
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      _TablePaginationControls(
+                        currentPage: currentPage,
+                        totalPages: totalPages,
+                        canGoPrevious: canGoPrevious,
+                        canGoNext: canGoNext,
+                        onPreviousPage: onPreviousPage,
+                        onNextPage: onNextPage,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
         ],
       ),
@@ -677,56 +747,191 @@ class _ShopRankingTable extends StatelessWidget {
   }
 }
 
+class _TablePaginationControls extends StatelessWidget {
+  final int currentPage;
+  final int totalPages;
+  final bool canGoPrevious;
+  final bool canGoNext;
+  final VoidCallback onPreviousPage;
+  final VoidCallback onNextPage;
+
+  const _TablePaginationControls({
+    required this.currentPage,
+    required this.totalPages,
+    required this.canGoPrevious,
+    required this.canGoNext,
+    required this.onPreviousPage,
+    required this.onNextPage,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _PaginationButton(
+          label: 'Previous',
+          onPressed: canGoPrevious ? onPreviousPage : null,
+        ),
+        const SizedBox(width: 10),
+        Text(
+          'Trang $currentPage / $totalPages',
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(width: 10),
+        _PaginationButton(
+          label: 'Next',
+          onPressed: canGoNext ? onNextPage : null,
+        ),
+      ],
+    );
+  }
+}
+
+class _PaginationButton extends StatelessWidget {
+  final String label;
+  final VoidCallback? onPressed;
+
+  const _PaginationButton({required this.label, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 34,
+      child: OutlinedButton(
+        onPressed: onPressed,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.textPrimary,
+          disabledForegroundColor: AppColors.textSecondary.withValues(
+            alpha: 0.45,
+          ),
+          side: const BorderSide(color: AppColors.cardLight),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        child: Text(label, style: const TextStyle(fontSize: 12)),
+      ),
+    );
+  }
+}
+
+class _ShopTableColumns {
+  final double shopName;
+  final double location;
+  final double productCount;
+  final double totalSold;
+  final double monthlySold;
+  final double rating;
+  final double averagePrice;
+  final double revenue;
+  final double official;
+
+  const _ShopTableColumns({
+    required this.shopName,
+    required this.location,
+    required this.productCount,
+    required this.totalSold,
+    required this.monthlySold,
+    required this.rating,
+    required this.averagePrice,
+    required this.revenue,
+    required this.official,
+  });
+
+  factory _ShopTableColumns.forWidth(double width) {
+    final safeWidth = math.max(width, 1008.0);
+    final shopName = safeWidth * 0.27;
+    final location = safeWidth * 0.15;
+    final productCount = safeWidth * 0.075;
+    final totalSold = safeWidth * 0.105;
+    final monthlySold = safeWidth * 0.095;
+    final rating = safeWidth * 0.07;
+    final averagePrice = safeWidth * 0.10;
+    final official = safeWidth * 0.065;
+    final usedWidth =
+        shopName +
+        location +
+        productCount +
+        totalSold +
+        monthlySold +
+        rating +
+        averagePrice +
+        official;
+
+    return _ShopTableColumns(
+      shopName: shopName,
+      location: location,
+      productCount: productCount,
+      totalSold: totalSold,
+      monthlySold: monthlySold,
+      rating: rating,
+      averagePrice: averagePrice,
+      revenue: safeWidth - usedWidth,
+      official: official,
+    );
+  }
+}
+
 class _ShopTableHeader extends StatelessWidget {
-  const _ShopTableHeader();
+  final _ShopTableColumns columns;
+
+  const _ShopTableHeader({required this.columns});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       color: AppColors.cardLight.withValues(alpha: 0.55),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: const Row(
+      child: Row(
         children: [
-          _TableCell(width: 250, text: 'SHOP NAME', isHeader: true),
-          _TableCell(width: 150, text: 'KHU VỰC', isHeader: true),
           _TableCell(
-            width: 90,
+            width: columns.shopName,
+            text: 'SHOP NAME',
+            isHeader: true,
+          ),
+          _TableCell(width: columns.location, text: 'KHU VỰC', isHeader: true),
+          _TableCell(
+            width: columns.productCount,
             text: 'SỐ SP',
             isHeader: true,
             alignRight: true,
           ),
           _TableCell(
-            width: 110,
+            width: columns.totalSold,
             text: 'TỔNG ĐÃ BÁN',
             isHeader: true,
             alignRight: true,
           ),
           _TableCell(
-            width: 110,
+            width: columns.monthlySold,
             text: 'BÁN/THÁNG',
             isHeader: true,
             alignRight: true,
           ),
           _TableCell(
-            width: 90,
+            width: columns.rating,
             text: 'RATING',
             isHeader: true,
             alignRight: true,
           ),
           _TableCell(
-            width: 120,
+            width: columns.averagePrice,
             text: 'GIÁ TB',
             isHeader: true,
             alignRight: true,
           ),
           _TableCell(
-            width: 130,
+            width: columns.revenue,
             text: 'DOANH THU ƯỚC TÍNH',
             isHeader: true,
             alignRight: true,
           ),
           _TableCell(
-            width: 70,
+            width: columns.official,
             text: 'OFFICIAL',
             isHeader: true,
             alignRight: true,
@@ -739,9 +944,14 @@ class _ShopTableHeader extends StatelessWidget {
 
 class _ShopTableRow extends StatelessWidget {
   final ShopAnalyticsItem shop;
+  final _ShopTableColumns columns;
   final VoidCallback onTap;
 
-  const _ShopTableRow({required this.shop, required this.onTap});
+  const _ShopTableRow({
+    required this.shop,
+    required this.columns,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -760,7 +970,7 @@ class _ShopTableRow extends StatelessWidget {
           child: Row(
             children: [
               SizedBox(
-                width: 250,
+                width: columns.shopName,
                 child: Row(
                   children: [
                     Container(
@@ -780,8 +990,7 @@ class _ShopTableRow extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 10),
-                    SizedBox(
-                      width: 200,
+                    Expanded(
                       child: Text(
                         shop.shopName,
                         style: const TextStyle(
@@ -796,45 +1005,45 @@ class _ShopTableRow extends StatelessWidget {
                   ],
                 ),
               ),
-              _TableCell(width: 150, text: shop.location),
+              _TableCell(width: columns.location, text: shop.location),
               _TableCell(
-                width: 90,
+                width: columns.productCount,
                 text: Formatters.number(shop.productCount),
                 alignRight: true,
                 isNumber: true,
               ),
               _TableCell(
-                width: 110,
+                width: columns.totalSold,
                 text: Formatters.number(shop.totalSold),
                 alignRight: true,
                 isNumber: true,
               ),
               _TableCell(
-                width: 110,
+                width: columns.monthlySold,
                 text: Formatters.number(shop.monthlySold),
                 alignRight: true,
                 isNumber: true,
               ),
               _TableCell(
-                width: 90,
+                width: columns.rating,
                 text: shop.averageRating.toStringAsFixed(1),
                 alignRight: true,
                 isNumber: true,
               ),
               _TableCell(
-                width: 120,
+                width: columns.averagePrice,
                 text: Formatters.priceShort(shop.averagePrice),
                 alignRight: true,
                 isNumber: true,
               ),
               _TableCell(
-                width: 130,
+                width: columns.revenue,
                 text: Formatters.priceShort(shop.totalRevenueEstimate),
                 alignRight: true,
                 isNumber: true,
               ),
               SizedBox(
-                width: 70,
+                width: columns.official,
                 child: Align(
                   alignment: Alignment.centerRight,
                   child: _OfficialBadge(isOfficial: shop.isOfficial),
