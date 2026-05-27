@@ -1,0 +1,11 @@
+linux/
+windows/
+macos/
+android/
+ios/
+web/
+build/
+.dart_tool/
+shopee-db/db/
+**/generated_plugin_registrant.*
+**/generated_plugins.cmake
