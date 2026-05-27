@@ -8,6 +8,7 @@ import 'package:shopee_app/providers/dashboard_provider.dart';
 import 'package:shopee_app/providers/shop_analysis_provider.dart';
 import 'package:shopee_app/screens/home_screen.dart';
 import 'package:shopee_app/providers/product_list_provider.dart';
+import 'package:shopee_app/providers/price_compare_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,6 +29,9 @@ class ShopeeApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (_) => ProductListProvider()..loadData(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => PriceCompareProvider()..loadData(),
         ),
       ],
       child: MaterialApp(
