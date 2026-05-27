@@ -12,7 +12,6 @@ import json
 import sys
 import os
 from datetime import datetime
-from decimal import Decimal
 
 import firebase_admin
 from firebase_admin import credentials, firestore
@@ -38,29 +37,25 @@ def parse_price(value):
         return None
 
 
+def _bool_field(item, key, default=False):
+    return item.get(key, default) or default
+
+
+def _split_image_urls(raw):
+    return [url.strip() for url in (raw or "").split("\n") if url.strip()]
+
+
 def build_shop(item):
     return {
         "shop_id": item["shopid"],
         "shop_name": (item.get("shop_name") or "").strip(),
         "shop_location": item.get("shop_location") or None,
-        "is_official": item.get("is_official_shop", False) or False,
+        "is_official": _bool_field(item, "is_official_shop"),
     }
 
 
-def build_product(item):
-    images = [url.strip() for url in (item.get("images") or "").split("\n") if url.strip()]
-    var_images = [url.strip() for url in (item.get("variations_images") or "").split("\n") if url.strip()]
-
+def _build_product_pricing(item):
     return {
-        "product_id": item["id"],
-        "shop_id": item["shopid"],
-        "category_id": item.get("category"),
-        "name": item["name"],
-        "url": item["url"],
-        "thumbnail_url": item.get("image"),
-        "images": images,
-        "variations_images": var_images,
-
         "price": parse_price(item.get("price")),
         "price_max": parse_price(item.get("price_max")),
         "price_min": parse_price(item.get("price_min")),
@@ -68,7 +63,11 @@ def build_product(item):
         "original_price": parse_price(item.get("original_price")),
         "discount": item.get("discount", 0) or 0,
         "discount_text": item.get("discount_text"),
+    }
 
+
+def _build_product_ratings(item):
+    return {
         "rating": item.get("rating", 0) or 0,
         "rating_count": item.get("rating_count", 0) or 0,
         "star_1_count": item.get("star_1_count", 0) or 0,
@@ -76,33 +75,50 @@ def build_product(item):
         "star_3_count": item.get("star_3_count", 0) or 0,
         "star_4_count": item.get("star_4_count", 0) or 0,
         "star_5_count": item.get("star_5_count", 0) or 0,
-
         "sold_count": item.get("sold_count", 0) or 0,
         "sold_count_text": item.get("sold_count_text"),
         "monthly_sold_count": item.get("monthly_sold_count", 0) or 0,
         "liked_count": item.get("liked_count", 0) or 0,
+    }
 
+
+def _build_product_flags(item):
+    return {
+        "is_adult": _bool_field(item, "is_adult"),
+        "is_service_by_shopee": _bool_field(item, "is_service_by_shopee"),
+        "is_shopee_choice": _bool_field(item, "is_shopee_choice"),
+        "is_on_flash_sale": _bool_field(item, "is_on_flash_sale"),
+        "is_official_shop": _bool_field(item, "is_official_shop"),
+        "is_preferred_plus_seller": _bool_field(item, "is_preferred_plus_seller"),
+        "is_lowest_price": _bool_field(item, "is_lowest_price"),
+        "is_live_streaming_price": item.get("is_live_streaming_price"),
+        "is_mart": _bool_field(item, "is_mart"),
+        "can_use_cod": _bool_field(item, "can_use_cod"),
+        "can_use_wholesale": _bool_field(item, "can_use_wholesale"),
+        "has_lowest_price_guarantee": _bool_field(item, "has_lowest_price_guarantee"),
+        "show_free_shipping": _bool_field(item, "show_free_shipping"),
+    }
+
+
+def build_product(item):
+    return {
+        "product_id": item["id"],
+        "shop_id": item["shopid"],
+        "category_id": item.get("category"),
+        "name": item["name"],
+        "url": item["url"],
+        "thumbnail_url": item.get("image"),
+        "images": _split_image_urls(item.get("images")),
+        "variations_images": _split_image_urls(item.get("variations_images")),
         "colors": item.get("colors") or None,
         "sizes": item.get("sizes") or None,
         "variations": item.get("variations") or None,
-
-        "is_adult": item.get("is_adult", False) or False,
-        "is_service_by_shopee": item.get("is_service_by_shopee", False) or False,
-        "is_shopee_choice": item.get("is_shopee_choice", False) or False,
-        "is_on_flash_sale": item.get("is_on_flash_sale", False) or False,
-        "is_official_shop": item.get("is_official_shop", False) or False,
-        "is_preferred_plus_seller": item.get("is_preferred_plus_seller", False) or False,
-        "is_lowest_price": item.get("is_lowest_price", False) or False,
-        "is_live_streaming_price": item.get("is_live_streaming_price"),
-        "is_mart": item.get("is_mart", False) or False,
-        "can_use_cod": item.get("can_use_cod", False) or False,
-        "can_use_wholesale": item.get("can_use_wholesale", False) or False,
-        "has_lowest_price_guarantee": item.get("has_lowest_price_guarantee", False) or False,
-        "show_free_shipping": item.get("show_free_shipping", False) or False,
-
         "shopee_created_at": parse_timestamp(item.get("created_time")),
         "source_url": item.get("source_url"),
         "extracted_at": parse_timestamp(item.get("extracted_at")),
+        **_build_product_pricing(item),
+        **_build_product_ratings(item),
+        **_build_product_flags(item),
     }
 
 
@@ -114,18 +130,15 @@ def main():
     json_file = sys.argv[1]
     key_file = sys.argv[2]
 
-    # Init Firebase
     cred = credentials.Certificate(key_file)
     firebase_admin.initialize_app(cred)
     db = firestore.client()
     print("[OK] Connected to Firestore")
 
-    # Load JSON
     with open(json_file, "r", encoding="utf-8") as f:
         items = json.load(f)
     print(f"Loaded {len(items)} items from {os.path.basename(json_file)}")
 
-    # --- Import Shops ---
     shops_ref = db.collection("shops")
     seen_shops = set()
     shop_count = 0
@@ -138,7 +151,6 @@ def main():
         shop_count += 1
     print(f"  Shops: {shop_count}")
 
-    # --- Import Categories ---
     cats_ref = db.collection("categories")
     seen_cats = set()
     cat_count = 0
@@ -151,7 +163,6 @@ def main():
         cat_count += 1
     print(f"  Categories: {cat_count}")
 
-    # --- Import Products ---
     products_ref = db.collection("products")
     seen_products = set()
     product_count = 0
@@ -164,7 +175,10 @@ def main():
         product_count += 1
     print(f"  Products: {product_count}")
 
-    print(f"\n[DONE] Imported to Firestore: {shop_count} shops, {cat_count} categories, {product_count} products")
+    print(
+        f"\n[DONE] Imported to Firestore: {shop_count} shops, "
+        f"{cat_count} categories, {product_count} products"
+    )
 
 
 if __name__ == "__main__":

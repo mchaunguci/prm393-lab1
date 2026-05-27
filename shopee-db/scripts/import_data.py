@@ -11,12 +11,22 @@ import os
 import sys
 import glob
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from urllib.parse import unquote, urlparse, parse_qs
 
 import psycopg2
 from psycopg2.extras import execute_values
+
+
+def _require_env(name: str) -> str:
+    value = os.getenv(name)
+    if not value:
+        raise RuntimeError(
+            f"Missing required environment variable: {name}. "
+            "Copy shopee-db/.env.example to .env and set credentials."
+        )
+    return value
 
 
 def get_connection(max_retries=10, delay=3):
@@ -26,7 +36,7 @@ def get_connection(max_retries=10, delay=3):
         "port": os.getenv("DB_PORT", "5432"),
         "dbname": os.getenv("POSTGRES_DB", "shopee_db"),
         "user": os.getenv("POSTGRES_USER", "shopee_user"),
-        "password": os.getenv("POSTGRES_PASSWORD", "shopee_pass_2026"),
+        "password": _require_env("POSTGRES_PASSWORD"),
     }
     for attempt in range(1, max_retries + 1):
         try:
@@ -72,6 +82,10 @@ def extract_keyword(source_url):
         return None
 
 
+def _bool_field(item, key, default=False):
+    return item.get(key, default) or default
+
+
 def upsert_shops(cur, items):
     shops = {}
     for item in items:
@@ -81,7 +95,7 @@ def upsert_shops(cur, items):
                 "shop_id": sid,
                 "shop_name": (item.get("shop_name") or "").strip(),
                 "shop_location": item.get("shop_location") or None,
-                "is_official": item.get("is_official_shop", False) or False,
+                "is_official": _bool_field(item, "is_official_shop"),
             }
         elif item.get("is_official_shop"):
             shops[sid]["is_official"] = True
@@ -118,6 +132,51 @@ def upsert_categories(cur, items):
     print(f"  Categories upserted: {len(rows)}")
 
 
+def _product_row(item):
+    return (
+        item["id"],
+        item["shopid"],
+        item.get("category"),
+        item["name"],
+        item["url"],
+        item.get("image"),
+        parse_decimal(item.get("price")),
+        parse_decimal(item.get("price_max")),
+        parse_decimal(item.get("price_min")),
+        parse_decimal(item.get("price_before_discount")),
+        parse_decimal(item.get("original_price")),
+        item.get("discount", 0) or 0,
+        item.get("discount_text"),
+        item.get("rating", 0) or 0,
+        item.get("rating_count", 0) or 0,
+        item.get("star_1_count", 0) or 0,
+        item.get("star_2_count", 0) or 0,
+        item.get("star_3_count", 0) or 0,
+        item.get("star_4_count", 0) or 0,
+        item.get("star_5_count", 0) or 0,
+        item.get("sold_count", 0) or 0,
+        item.get("sold_count_text"),
+        item.get("monthly_sold_count", 0) or 0,
+        item.get("liked_count", 0) or 0,
+        item.get("colors") or None,
+        item.get("sizes") or None,
+        item.get("variations") or None,
+        _bool_field(item, "is_adult"),
+        _bool_field(item, "is_service_by_shopee"),
+        _bool_field(item, "is_shopee_choice"),
+        _bool_field(item, "is_on_flash_sale"),
+        _bool_field(item, "is_preferred_plus_seller"),
+        _bool_field(item, "is_lowest_price"),
+        item.get("is_live_streaming_price"),
+        _bool_field(item, "is_mart"),
+        _bool_field(item, "can_use_cod"),
+        _bool_field(item, "can_use_wholesale"),
+        _bool_field(item, "has_lowest_price_guarantee"),
+        _bool_field(item, "show_free_shipping"),
+        parse_timestamp(item.get("created_time")),
+    )
+
+
 def upsert_products(cur, items):
     seen = set()
     rows = []
@@ -126,48 +185,7 @@ def upsert_products(cur, items):
         if pid in seen:
             continue
         seen.add(pid)
-        rows.append((
-            item["id"],
-            item["shopid"],
-            item.get("category"),
-            item["name"],
-            item["url"],
-            item.get("image"),
-            parse_decimal(item.get("price")),
-            parse_decimal(item.get("price_max")),
-            parse_decimal(item.get("price_min")),
-            parse_decimal(item.get("price_before_discount")),
-            parse_decimal(item.get("original_price")),
-            item.get("discount", 0) or 0,
-            item.get("discount_text"),
-            item.get("rating", 0) or 0,
-            item.get("rating_count", 0) or 0,
-            item.get("star_1_count", 0) or 0,
-            item.get("star_2_count", 0) or 0,
-            item.get("star_3_count", 0) or 0,
-            item.get("star_4_count", 0) or 0,
-            item.get("star_5_count", 0) or 0,
-            item.get("sold_count", 0) or 0,
-            item.get("sold_count_text"),
-            item.get("monthly_sold_count", 0) or 0,
-            item.get("liked_count", 0) or 0,
-            item.get("colors") or None,
-            item.get("sizes") or None,
-            item.get("variations") or None,
-            item.get("is_adult", False) or False,
-            item.get("is_service_by_shopee", False) or False,
-            item.get("is_shopee_choice", False) or False,
-            item.get("is_on_flash_sale", False) or False,
-            item.get("is_preferred_plus_seller", False) or False,
-            item.get("is_lowest_price", False) or False,
-            item.get("is_live_streaming_price"),
-            item.get("is_mart", False) or False,
-            item.get("can_use_cod", False) or False,
-            item.get("can_use_wholesale", False) or False,
-            item.get("has_lowest_price_guarantee", False) or False,
-            item.get("show_free_shipping", False) or False,
-            parse_timestamp(item.get("created_time")),
-        ))
+        rows.append(_product_row(item))
 
     execute_values(
         cur,
@@ -213,14 +231,27 @@ def upsert_products(cur, items):
     print(f"  Products upserted: {len(rows)}")
 
 
-def insert_images(cur, items):
-    cur.execute("CREATE TEMP TABLE _seen_img (product_id BIGINT) ON COMMIT DROP")
+def _collect_image_rows(pid, raw_field, image_type):
+    rows = []
+    for order, url in enumerate((raw_field or "").split("\n")):
+        url = url.strip()
+        if url:
+            rows.append((pid, url, image_type, order))
+    return rows
+
+
+def _product_ids_with_images(cur, product_ids):
     existing = set()
-    product_ids = [item["id"] for item in items]
     for pid in product_ids:
         cur.execute("SELECT 1 FROM product_images WHERE product_id = %s LIMIT 1", (pid,))
         if cur.fetchone():
             existing.add(pid)
+    return existing
+
+
+def insert_images(cur, items):
+    product_ids = [item["id"] for item in items]
+    existing = _product_ids_with_images(cur, product_ids)
 
     product_rows = []
     variation_rows = []
@@ -229,18 +260,8 @@ def insert_images(cur, items):
         pid = item["id"]
         if pid in existing:
             continue
-
-        raw_images = item.get("images") or ""
-        for order, url in enumerate(raw_images.split("\n")):
-            url = url.strip()
-            if url:
-                product_rows.append((pid, url, "product", order))
-
-        raw_var_images = item.get("variations_images") or ""
-        for order, url in enumerate(raw_var_images.split("\n")):
-            url = url.strip()
-            if url:
-                variation_rows.append((pid, url, "variation", order))
+        product_rows.extend(_collect_image_rows(pid, item.get("images"), "product"))
+        variation_rows.extend(_collect_image_rows(pid, item.get("variations_images"), "variation"))
 
     all_rows = product_rows + variation_rows
     if all_rows:
@@ -258,7 +279,7 @@ def insert_extraction(cur, items, file_name):
     first = items[0]
     source_url = first.get("source_url", "")
     keyword = extract_keyword(source_url)
-    extracted_at = parse_timestamp(first.get("extracted_at")) or datetime.utcnow()
+    extracted_at = parse_timestamp(first.get("extracted_at")) or datetime.now(timezone.utc)
 
     cur.execute(
         """
@@ -290,7 +311,7 @@ def import_file(conn, filepath):
         items = json.load(f)
 
     if not isinstance(items, list) or not items:
-        print(f"  [SKIP] File is empty or not a JSON array")
+        print("  [SKIP] File is empty or not a JSON array")
         return
 
     print(f"  Items in file: {len(items)}")
