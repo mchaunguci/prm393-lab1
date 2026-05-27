@@ -641,7 +641,7 @@ class _ShopRankingTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tableWidth = math.max(width, 1040.0);
+    final tableWidth = math.max(width, 1120.0);
     final columns = _ShopTableColumns.forWidth(tableWidth - 32);
 
     return Container(
@@ -843,35 +843,20 @@ class _ShopTableColumns {
   });
 
   factory _ShopTableColumns.forWidth(double width) {
-    final safeWidth = math.max(width, 1008.0);
-    final shopName = safeWidth * 0.27;
-    final location = safeWidth * 0.15;
-    final productCount = safeWidth * 0.075;
-    final totalSold = safeWidth * 0.105;
-    final monthlySold = safeWidth * 0.095;
-    final rating = safeWidth * 0.07;
-    final averagePrice = safeWidth * 0.10;
-    final official = safeWidth * 0.065;
-    final usedWidth =
-        shopName +
-        location +
-        productCount +
-        totalSold +
-        monthlySold +
-        rating +
-        averagePrice +
-        official;
+    final safeWidth = math.max(width, 1088.0);
+    const totalFlex = 108.0;
+    double flex(double value) => safeWidth * value / totalFlex;
 
     return _ShopTableColumns(
-      shopName: shopName,
-      location: location,
-      productCount: productCount,
-      totalSold: totalSold,
-      monthlySold: monthlySold,
-      rating: rating,
-      averagePrice: averagePrice,
-      revenue: safeWidth - usedWidth,
-      official: official,
+      shopName: flex(24),
+      location: flex(16),
+      productCount: flex(7),
+      totalSold: flex(10),
+      monthlySold: flex(10),
+      rating: flex(8),
+      averagePrice: flex(10),
+      revenue: flex(15),
+      official: flex(8),
     );
   }
 }
@@ -898,25 +883,25 @@ class _ShopTableHeader extends StatelessWidget {
             width: columns.productCount,
             text: 'SỐ SP',
             isHeader: true,
-            alignRight: true,
+            alignCenter: true,
           ),
           _TableCell(
             width: columns.totalSold,
             text: 'TỔNG ĐÃ BÁN',
             isHeader: true,
-            alignRight: true,
+            alignCenter: true,
           ),
           _TableCell(
             width: columns.monthlySold,
             text: 'BÁN/THÁNG',
             isHeader: true,
-            alignRight: true,
+            alignCenter: true,
           ),
           _TableCell(
             width: columns.rating,
             text: 'RATING',
             isHeader: true,
-            alignRight: true,
+            alignCenter: true,
           ),
           _TableCell(
             width: columns.averagePrice,
@@ -929,12 +914,13 @@ class _ShopTableHeader extends StatelessWidget {
             text: 'DOANH THU ƯỚC TÍNH',
             isHeader: true,
             alignRight: true,
+            maxLines: 2,
           ),
           _TableCell(
             width: columns.official,
             text: 'OFFICIAL',
             isHeader: true,
-            alignRight: true,
+            alignCenter: true,
           ),
         ],
       ),
@@ -1009,43 +995,43 @@ class _ShopTableRow extends StatelessWidget {
               _TableCell(
                 width: columns.productCount,
                 text: Formatters.number(shop.productCount),
-                alignRight: true,
+                alignCenter: true,
                 isNumber: true,
               ),
               _TableCell(
                 width: columns.totalSold,
                 text: Formatters.number(shop.totalSold),
-                alignRight: true,
+                alignCenter: true,
                 isNumber: true,
               ),
               _TableCell(
                 width: columns.monthlySold,
                 text: Formatters.number(shop.monthlySold),
-                alignRight: true,
+                alignCenter: true,
                 isNumber: true,
               ),
               _TableCell(
                 width: columns.rating,
                 text: shop.averageRating.toStringAsFixed(1),
-                alignRight: true,
+                alignCenter: true,
                 isNumber: true,
               ),
               _TableCell(
                 width: columns.averagePrice,
-                text: Formatters.priceShort(shop.averagePrice),
+                text: _formatTableMoney(shop.averagePrice),
                 alignRight: true,
                 isNumber: true,
               ),
               _TableCell(
                 width: columns.revenue,
-                text: Formatters.priceShort(shop.totalRevenueEstimate),
+                text: _formatTableMoney(shop.totalRevenueEstimate),
                 alignRight: true,
                 isNumber: true,
               ),
               SizedBox(
                 width: columns.official,
                 child: Align(
-                  alignment: Alignment.centerRight,
+                  alignment: Alignment.center,
                   child: _OfficialBadge(isOfficial: shop.isOfficial),
                 ),
               ),
@@ -1062,35 +1048,66 @@ class _TableCell extends StatelessWidget {
   final String text;
   final bool isHeader;
   final bool alignRight;
+  final bool alignCenter;
   final bool isNumber;
+  final int maxLines;
 
   const _TableCell({
     required this.width,
     required this.text,
     this.isHeader = false,
     this.alignRight = false,
+    this.alignCenter = false,
     this.isNumber = false,
+    this.maxLines = 1,
   });
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: width,
-      child: Text(
-        text,
-        textAlign: alignRight ? TextAlign.right : TextAlign.left,
-        style: TextStyle(
-          color: isHeader ? AppColors.textSecondary : AppColors.textPrimary,
-          fontSize: isHeader ? 11 : 12,
-          fontWeight: isHeader ? FontWeight.w700 : FontWeight.w500,
-          letterSpacing: isHeader ? 0.6 : 0,
-          fontFamily: isNumber ? 'JetBrains Mono' : null,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+        child: Text(
+          text,
+          textAlign: alignRight
+              ? TextAlign.right
+              : alignCenter
+              ? TextAlign.center
+              : TextAlign.left,
+          style: TextStyle(
+            color: isHeader ? AppColors.textSecondary : AppColors.textPrimary,
+            fontSize: isHeader ? 10 : 12,
+            fontWeight: isHeader ? FontWeight.w700 : FontWeight.w500,
+            height: isHeader ? 1.15 : null,
+            letterSpacing: isHeader ? 0.35 : 0,
+            fontFamily: isNumber ? 'JetBrains Mono' : null,
+          ),
+          maxLines: maxLines,
+          overflow: TextOverflow.ellipsis,
         ),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
       ),
     );
   }
+}
+
+String _formatTableMoney(double value) {
+  if (value <= 0) return '—';
+  if (value >= 1000000000) {
+    return '${_trimMoneyUnit(value / 1000000000)}B';
+  }
+  if (value >= 1000000) {
+    return '${_trimMoneyUnit(value / 1000000)}M';
+  }
+  if (value >= 1000) {
+    return '${_trimMoneyUnit(value / 1000)}k';
+  }
+  return value.toStringAsFixed(0);
+}
+
+String _trimMoneyUnit(double value) {
+  final text = value.toStringAsFixed(1);
+  return text.endsWith('.0') ? text.substring(0, text.length - 2) : text;
 }
 
 class _OfficialBadge extends StatelessWidget {
@@ -1100,23 +1117,30 @@ class _OfficialBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMuted = !isOfficial;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: EdgeInsets.symmetric(
+        horizontal: isMuted ? 6 : 8,
+        vertical: isMuted ? 2 : 4,
+      ),
       decoration: BoxDecoration(
         color: (isOfficial ? AppColors.blue : AppColors.cardLight).withValues(
-          alpha: isOfficial ? 0.16 : 0.8,
+          alpha: isOfficial ? 0.16 : 0.28,
         ),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(
-          color: isOfficial ? AppColors.blue : AppColors.cardLight,
+          color: isOfficial
+              ? AppColors.blue
+              : AppColors.cardLight.withValues(alpha: 0.55),
         ),
       ),
       child: Text(
         isOfficial ? 'Có' : 'Không',
         style: TextStyle(
           color: isOfficial ? AppColors.blue : AppColors.textSecondary,
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
+          fontSize: isMuted ? 9 : 10,
+          fontWeight: isMuted ? FontWeight.w600 : FontWeight.w700,
         ),
       ),
     );
@@ -1138,6 +1162,12 @@ class _ShopDetailDialog extends StatelessWidget {
     );
     final productRowsHeight = math.max(96.0, productListHeight - 78);
     final titleWidth = math.max(0.0, dialogWidth - 88);
+    final detailInnerWidth = math.max(0.0, dialogWidth - 40);
+    final detailColumns = detailInnerWidth >= 660 ? 3 : 2;
+    final detailCardWidth = math.max(
+      0.0,
+      (detailInnerWidth - (detailColumns - 1) * 12) / detailColumns,
+    );
 
     return Dialog(
       backgroundColor: AppColors.card,
@@ -1219,26 +1249,32 @@ class _ShopDetailDialog extends StatelessWidget {
                   _DetailStat(
                     label: 'SỐ SẢN PHẨM',
                     value: Formatters.number(shop.productCount),
+                    width: detailCardWidth,
                   ),
                   _DetailStat(
                     label: 'TỔNG ĐÃ BÁN',
                     value: Formatters.number(shop.totalSold),
+                    width: detailCardWidth,
                   ),
                   _DetailStat(
                     label: 'BÁN/THÁNG',
                     value: Formatters.number(shop.monthlySold),
+                    width: detailCardWidth,
                   ),
                   _DetailStat(
                     label: 'RATING TB',
                     value: shop.averageRating.toStringAsFixed(1),
+                    width: detailCardWidth,
                   ),
                   _DetailStat(
                     label: 'GIÁ TB',
                     value: Formatters.priceShort(shop.averagePrice),
+                    width: detailCardWidth,
                   ),
                   _DetailStat(
                     label: 'DOANH THU ƯỚC TÍNH',
-                    value: Formatters.priceShort(shop.totalRevenueEstimate),
+                    value: _formatTableMoney(shop.totalRevenueEstimate),
+                    width: detailCardWidth,
                   ),
                 ],
               ),
@@ -1306,13 +1342,19 @@ class _ShopDetailDialog extends StatelessWidget {
 class _DetailStat extends StatelessWidget {
   final String label;
   final String value;
+  final double width;
 
-  const _DetailStat({required this.label, required this.value});
+  const _DetailStat({
+    required this.label,
+    required this.value,
+    required this.width,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 138,
+      width: width,
+      height: 76,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.background,
@@ -1330,6 +1372,8 @@ class _DetailStat extends StatelessWidget {
               fontWeight: FontWeight.w700,
               letterSpacing: 0.7,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 8),
           Text(
