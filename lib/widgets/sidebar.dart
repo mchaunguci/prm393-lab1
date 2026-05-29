@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shopee_app/core/constants/app_colors.dart';
+import 'package:shopee_app/core/utils/formatters.dart';
+import 'package:shopee_app/providers/dashboard_provider.dart';
 
 class Sidebar extends StatelessWidget {
   final int selectedIndex;
@@ -82,9 +85,71 @@ class Sidebar extends StatelessWidget {
             isSelected: selectedIndex == 3,
             onTap: () => onItemSelected(3),
           ),
+          _NavItem(
+            icon: Icons.hub,
+            label: 'Network Graph',
+            isSelected: selectedIndex == 4,
+            onTap: () => onItemSelected(4),
+          ),
           const Spacer(),
+          _buildRefreshSection(context),
         ],
       ),
+    );
+  }
+
+  Widget _buildRefreshSection(BuildContext context) {
+    return Consumer<DashboardProvider>(
+      builder: (context, provider, _) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (provider.lastUpdated != null) ...[
+                Text(
+                  'Cập nhật: ${Formatters.date(provider.lastUpdated)}',
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 10,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+              ],
+              SizedBox(
+                height: 40,
+                child: ElevatedButton.icon(
+                  onPressed: provider.isLoading ? null : provider.loadData,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.accent,
+                    disabledBackgroundColor: AppColors.accent.withValues(alpha: 0.5),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  icon: provider.isLoading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.refresh, size: 18),
+                  label: Text(
+                    provider.isLoading ? 'Đang tải...' : 'Làm mới dữ liệu',
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

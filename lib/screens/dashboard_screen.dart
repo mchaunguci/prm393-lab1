@@ -46,30 +46,20 @@ class DashboardScreen extends StatelessWidget {
           );
         }
 
-        return Stack(
-          children: [
-            SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeader(provider),
-                  const SizedBox(height: 24),
-                  _buildStatCards(provider),
-                  const SizedBox(height: 24),
-                  _buildCharts(provider),
-                  const SizedBox(height: 24),
-                  _buildTables(provider),
-                  const SizedBox(height: 80),
-                ],
-              ),
-            ),
-            Positioned(
-              left: 24,
-              bottom: 24,
-              child: _buildRefreshButton(provider),
-            ),
-          ],
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeader(provider),
+              const SizedBox(height: 24),
+              _buildStatCards(provider),
+              const SizedBox(height: 24),
+              _buildCharts(provider),
+              const SizedBox(height: 24),
+              _buildTables(provider),
+            ],
+          ),
         );
       },
     );
@@ -171,28 +161,6 @@ class DashboardScreen extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildRefreshButton(DashboardProvider provider) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        FloatingActionButton.extended(
-          onPressed: provider.loadData,
-          backgroundColor: AppColors.accent,
-          icon: const Icon(Icons.refresh, color: Colors.white),
-          label: const Text('Làm mới dữ liệu', style: TextStyle(color: Colors.white)),
-        ),
-        if (provider.lastUpdated != null) ...[
-          const SizedBox(height: 6),
-          Text(
-            '⏱ Dữ liệu cập nhật: ${Formatters.date(provider.lastUpdated)}',
-            style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
-          ),
-        ],
-      ],
     );
   }
 }
