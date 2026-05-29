@@ -58,69 +58,84 @@ class _ProductsScreenState extends State<ProductsScreen> {
           _currentPage = totalPages - 1;
         }
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Danh sách sản phẩm',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Tổng ${provider.products.length} sản phẩm từ ${provider.shops.length} shop trên Shopee',
-                    style: TextStyle(
-                      color: AppColors.textSecondary.withValues(alpha: 0.7),
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeader(provider),
+              const SizedBox(height: 20),
+              ProductFilterBar(
+                provider: provider,
+                onSearchChanged: () => setState(() => _currentPage = 0),
               ),
-            ),
-            const SizedBox(height: 16),
-            ProductFilterBar(provider: provider),
-            Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    flex: 7,
-                    child: ProductListTable(
-                      provider: provider,
-                      selectedProductId: _selectedProduct?.productId,
-                      onProductSelected: (product) {
-                        setState(() => _selectedProduct = product);
-                      },
-                      currentPage: _currentPage,
-                      rowsPerPage: 15,
-                      onPageChanged: (page) {
-                        setState(() => _currentPage = page);
-                      },
-                    ),
-                  ),
-                  if (_selectedProduct != null)
+              const SizedBox(height: 16),
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
                     Expanded(
-                      flex: 3,
-                      child: ProductDetailPanel(
-                        product: _selectedProduct!,
+                      flex: 7,
+                      child: ProductListTable(
                         provider: provider,
+                        selectedProductId: _selectedProduct?.productId,
+                        onProductSelected: (product) {
+                          setState(() => _selectedProduct = product);
+                        },
+                        currentPage: _currentPage,
+                        rowsPerPage: 15,
+                        onPageChanged: (page) {
+                          setState(() => _currentPage = page);
+                        },
                       ),
                     ),
-                ],
+                    if (_selectedProduct != null) ...[
+                      const SizedBox(width: 16),
+                      Expanded(
+                        flex: 3,
+                        child: ProductDetailPanel(
+                          product: _selectedProduct!,
+                          provider: provider,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         );
       },
+    );
+  }
+
+  Widget _buildHeader(ProductListProvider provider) {
+    final filtered = provider.products.length;
+    final total = provider.totalProducts;
+    final subtitle = filtered == total
+        ? '$total sản phẩm · ${provider.shops.length} shop trên Shopee'
+        : '$filtered / $total sản phẩm · ${provider.shops.length} shop';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Danh sách sản phẩm',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          subtitle,
+          style: TextStyle(
+            color: AppColors.textSecondary.withValues(alpha: 0.7),
+            fontSize: 13,
+          ),
+        ),
+      ],
     );
   }
 }

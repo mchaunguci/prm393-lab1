@@ -101,17 +101,60 @@ class Product {
     this.extractedAt,
   });
 
+  String? get displayImageUrl {
+    final thumb = thumbnailUrl?.trim();
+    if (thumb != null && thumb.isNotEmpty) return thumb;
+    if (images.isNotEmpty) return images.first;
+    return null;
+  }
+
+  static String? _optionalString(dynamic value) {
+    if (value == null) return null;
+    final text = value.toString().trim();
+    return text.isEmpty ? null : text;
+  }
+
+  static List<String> _parseImageUrls(dynamic raw) {
+    if (raw == null) return const [];
+    if (raw is List) {
+      return raw
+          .map((item) => item.toString().trim())
+          .where((url) => url.isNotEmpty)
+          .toList();
+    }
+    if (raw is String) {
+      return raw
+          .split('\n')
+          .map((url) => url.trim())
+          .where((url) => url.isNotEmpty)
+          .toList();
+    }
+    return const [];
+  }
+
+  static String? _resolveThumbnailUrl(
+    Map<String, dynamic> data,
+    List<String> images,
+  ) {
+    return _optionalString(data['thumbnail_url']) ??
+        _optionalString(data['image']) ??
+        (images.isNotEmpty ? images.first : null);
+  }
+
   factory Product.fromFirestore(DocumentSnapshot doc) {
     final d = doc.data() as Map<String, dynamic>;
+    final images = _parseImageUrls(d['images']);
+    final variationsImages = _parseImageUrls(d['variations_images']);
+
     return Product(
       productId: (d['product_id'] as num?)?.toInt() ?? 0,
       shopId: (d['shop_id'] as num?)?.toInt() ?? 0,
       categoryId: (d['category_id'] as num?)?.toInt(),
       name: d['name'] ?? '',
       url: d['url'] ?? '',
-      thumbnailUrl: d['thumbnail_url'],
-      images: List<String>.from(d['images'] ?? []),
-      variationsImages: List<String>.from(d['variations_images'] ?? []),
+      thumbnailUrl: _resolveThumbnailUrl(d, images),
+      images: images,
+      variationsImages: variationsImages,
       price: (d['price'] as num?)?.toDouble() ?? 0,
       priceMax: (d['price_max'] as num?)?.toDouble(),
       priceMin: (d['price_min'] as num?)?.toDouble(),

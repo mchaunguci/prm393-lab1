@@ -14,7 +14,7 @@ enum ShopSortOption {
 }
 
 class ShopAnalysisProvider extends ChangeNotifier {
-  static const int shopsPerPage = 8;
+  static const int shopsPerPage = 15;
 
   final FirestoreService _service = FirestoreService();
 
@@ -204,6 +204,13 @@ class ShopAnalysisProvider extends ChangeNotifier {
   void nextShopPage() {
     if (!canGoToNextShopPage) return;
     _currentPage += 1;
+    notifyListeners();
+  }
+
+  void goToShopPage(int page) {
+    final target = page.clamp(1, totalShopPages);
+    if (target == _currentPage) return;
+    _currentPage = target;
     notifyListeners();
   }
 
