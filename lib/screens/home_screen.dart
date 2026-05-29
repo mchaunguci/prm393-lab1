@@ -5,6 +5,7 @@ import 'package:shopee_app/screens/dashboard_screen.dart';
 import 'package:shopee_app/screens/products_screen.dart';
 import 'package:shopee_app/screens/shop_analysis_screen.dart';
 import 'package:shopee_app/screens/price_compare_screen.dart';
+import 'package:shopee_app/screens/shop_product_graph_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -21,6 +22,7 @@ class _HomeScreenState extends State<HomeScreen> {
     ProductsScreen(),
     ShopAnalysisScreen(),
     PriceCompareScreen(),
+    ShopProductGraphScreen(),
   ];
 
   @override
