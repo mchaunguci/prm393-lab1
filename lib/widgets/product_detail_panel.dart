@@ -17,11 +17,11 @@ class ProductDetailPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppColors.card,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.cardLight.withValues(alpha: 0.75)),
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -51,11 +51,11 @@ class ProductDetailPanel extends StatelessWidget {
       borderRadius: BorderRadius.circular(8),
       child: AspectRatio(
         aspectRatio: 1,
-        child: product.thumbnailUrl != null
+        child: product.displayImageUrl != null
             ? Image.network(
-                product.thumbnailUrl!,
+                product.displayImageUrl!,
                 width: double.infinity,
-                fit: BoxFit.contain,
+                fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => Container(
                   color: AppColors.cardLight,
                   child: const Icon(Icons.image, color: AppColors.textSecondary, size: 48),

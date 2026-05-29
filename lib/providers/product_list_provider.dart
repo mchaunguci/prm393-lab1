@@ -23,7 +23,7 @@ class ProductListProvider extends ChangeNotifier {
   bool? _isShopeeChoice;
 
   //sort state
-  String _sortBy = 'name'; // name, price, rating, sold_count, discount
+  String _sortBy = 'price'; // price, rating, sold, discount
   bool _sortAsc = true;
 
   // Getters
@@ -41,6 +41,7 @@ class ProductListProvider extends ChangeNotifier {
   bool? get isShopeeChoice => _isShopeeChoice;
   String get sortBy => _sortBy;
   bool get sortAsc => _sortAsc;
+  int get totalProducts => _allProducts.length;
 
   //filter + sorted
   List<Product> get products {
@@ -107,7 +108,7 @@ class ProductListProvider extends ChangeNotifier {
         case 'discount':
           compare = a.discount.compareTo(b.discount);
         default:
-          compare = a.name.compareTo(b.name);
+          compare = a.price.compareTo(b.price);
       }
       return _sortAsc ? compare : -compare;
     });
@@ -163,11 +164,16 @@ class ProductListProvider extends ChangeNotifier {
   }
 
   void setSort(String field) {
-    if (_sortBy == field) {
-      _sortAsc = !_sortAsc; // toggle direction
-    } else {
-      _sortBy = field;
-      _sortAsc = true;
+    switch (field) {
+      case 'price_asc':
+        _sortBy = 'price';
+        _sortAsc = true;
+      case 'price_desc':
+        _sortBy = 'price';
+        _sortAsc = false;
+      default:
+        _sortBy = field;
+        _sortAsc = false;
     }
     notifyListeners();
   }

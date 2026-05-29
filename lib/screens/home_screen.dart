@@ -28,6 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Sidebar(
             selectedIndex: _selectedIndex,
@@ -55,27 +56,7 @@ class _HomeScreenState extends State<HomeScreen> {
       color: AppColors.surface,
       child: Row(
         children: [
-          Expanded(
-            child: Container(
-              height: 36,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: AppColors.card,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.search, color: AppColors.textSecondary, size: 18),
-                  SizedBox(width: 8),
-                  Text(
-                    'Tìm kiếm GPU, model hoặc cửa hàng...',
-                    style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
+          const Spacer(),
           const Icon(Icons.notifications_outlined, color: AppColors.textSecondary, size: 22),
           const SizedBox(width: 16),
           const Icon(Icons.settings_outlined, color: AppColors.textSecondary, size: 22),

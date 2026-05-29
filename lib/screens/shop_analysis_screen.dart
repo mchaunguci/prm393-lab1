@@ -65,12 +65,7 @@ class ShopAnalysisScreen extends StatelessWidget {
                       width: contentWidth,
                       currentPage: provider.currentPage,
                       totalPages: provider.totalShopPages,
-                      visibleStart: provider.visibleShopStart,
-                      visibleEnd: provider.visibleShopEnd,
-                      canGoPrevious: provider.canGoToPreviousShopPage,
-                      canGoNext: provider.canGoToNextShopPage,
-                      onPreviousPage: provider.previousShopPage,
-                      onNextPage: provider.nextShopPage,
+                      onPageChanged: provider.goToShopPage,
                       onShopTap: (shop) =>
                           _openShopDetail(context, provider, shop),
                     ),
@@ -616,12 +611,7 @@ class _ShopRankingTable extends StatelessWidget {
   final double width;
   final int currentPage;
   final int totalPages;
-  final int visibleStart;
-  final int visibleEnd;
-  final bool canGoPrevious;
-  final bool canGoNext;
-  final VoidCallback onPreviousPage;
-  final VoidCallback onNextPage;
+  final ValueChanged<int> onPageChanged;
   final ValueChanged<ShopAnalyticsItem> onShopTap;
 
   const _ShopRankingTable({
@@ -630,12 +620,7 @@ class _ShopRankingTable extends StatelessWidget {
     required this.width,
     required this.currentPage,
     required this.totalPages,
-    required this.visibleStart,
-    required this.visibleEnd,
-    required this.canGoPrevious,
-    required this.canGoNext,
-    required this.onPreviousPage,
-    required this.onNextPage,
+    required this.onPageChanged,
     required this.onShopTap,
   });
 
@@ -705,39 +690,11 @@ class _ShopRankingTable extends StatelessWidget {
                   ),
                 ),
                 const Divider(color: AppColors.cardLight, height: 1),
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  child: Wrap(
-                    spacing: 12,
-                    runSpacing: 10,
-                    alignment: WrapAlignment.spaceBetween,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      SizedBox(
-                        width: math.max(0.0, math.min(260.0, width - 32)),
-                        child: Text(
-                          'Hiển thị $visibleStart-$visibleEnd / ${Formatters.number(shops.length)} shop',
-                          style: const TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 12,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      _TablePaginationControls(
-                        currentPage: currentPage,
-                        totalPages: totalPages,
-                        canGoPrevious: canGoPrevious,
-                        canGoNext: canGoNext,
-                        onPreviousPage: onPreviousPage,
-                        onNextPage: onNextPage,
-                      ),
-                    ],
-                  ),
+                _ShopPaginationBar(
+                  currentPage: currentPage,
+                  totalPages: totalPages,
+                  totalItems: shops.length,
+                  onPageChanged: onPageChanged,
                 ),
               ],
             ),
@@ -747,73 +704,132 @@ class _ShopRankingTable extends StatelessWidget {
   }
 }
 
-class _TablePaginationControls extends StatelessWidget {
+class _ShopPaginationBar extends StatelessWidget {
   final int currentPage;
   final int totalPages;
-  final bool canGoPrevious;
-  final bool canGoNext;
-  final VoidCallback onPreviousPage;
-  final VoidCallback onNextPage;
+  final int totalItems;
+  final ValueChanged<int> onPageChanged;
 
-  const _TablePaginationControls({
+  const _ShopPaginationBar({
     required this.currentPage,
     required this.totalPages,
-    required this.canGoPrevious,
-    required this.canGoNext,
-    required this.onPreviousPage,
-    required this.onNextPage,
+    required this.totalItems,
+    required this.onPageChanged,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _PaginationButton(
-          label: 'Previous',
-          onPressed: canGoPrevious ? onPreviousPage : null,
-        ),
-        const SizedBox(width: 10),
-        Text(
-          'Trang $currentPage / $totalPages',
-          style: const TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
+    final pageSize = ShopAnalysisProvider.shopsPerPage;
+    final startItem = totalItems == 0 ? 0 : (currentPage - 1) * pageSize + 1;
+    final endItem = math.min(currentPage * pageSize, totalItems);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: AppColors.cardLight)),
+      ),
+      child: Row(
+        children: [
+          Text(
+            'Hiển thị $startItem-$endItem trong số $totalItems shop',
+            style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
           ),
-        ),
-        const SizedBox(width: 10),
-        _PaginationButton(
-          label: 'Next',
-          onPressed: canGoNext ? onNextPage : null,
-        ),
-      ],
+          const Spacer(),
+          _pageButton(
+            icon: Icons.chevron_left,
+            onTap: currentPage > 1 ? () => onPageChanged(currentPage - 1) : null,
+          ),
+          const SizedBox(width: 4),
+          ..._buildPageNumbers(),
+          const SizedBox(width: 4),
+          _pageButton(
+            icon: Icons.chevron_right,
+            onTap: currentPage < totalPages
+                ? () => onPageChanged(currentPage + 1)
+                : null,
+          ),
+        ],
+      ),
     );
   }
-}
 
-class _PaginationButton extends StatelessWidget {
-  final String label;
-  final VoidCallback? onPressed;
+  List<Widget> _buildPageNumbers() {
+    final pages = <Widget>[];
+    const maxVisible = 5;
+    final zeroBasedCurrent = currentPage - 1;
 
-  const _PaginationButton({required this.label, required this.onPressed});
+    int start = math.max(0, zeroBasedCurrent - maxVisible ~/ 2);
+    int end = math.min(totalPages, start + maxVisible);
+    if (end - start < maxVisible) {
+      start = math.max(0, end - maxVisible);
+    }
 
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 34,
-      child: OutlinedButton(
-        onPressed: onPressed,
-        style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.textPrimary,
-          disabledForegroundColor: AppColors.textSecondary.withValues(
-            alpha: 0.45,
-          ),
-          side: const BorderSide(color: AppColors.cardLight),
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    if (start > 0) {
+      pages.add(_pageNumber(1));
+      if (start > 1) pages.add(_ellipsis());
+    }
+
+    for (int i = start; i < end; i++) {
+      pages.add(_pageNumber(i + 1));
+    }
+
+    if (end < totalPages) {
+      if (end < totalPages - 1) pages.add(_ellipsis());
+      pages.add(_pageNumber(totalPages));
+    }
+
+    return pages;
+  }
+
+  Widget _pageNumber(int page) {
+    final isActive = page == currentPage;
+    return GestureDetector(
+      onTap: () => onPageChanged(page),
+      child: Container(
+        width: 32,
+        height: 32,
+        margin: const EdgeInsets.symmetric(horizontal: 2),
+        decoration: BoxDecoration(
+          color: isActive ? AppColors.accent : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
         ),
-        child: Text(label, style: const TextStyle(fontSize: 12)),
+        alignment: Alignment.center,
+        child: Text(
+          '$page',
+          style: TextStyle(
+            color: isActive ? Colors.white : AppColors.textSecondary,
+            fontSize: 12,
+            fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _ellipsis() {
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 4),
+      child: Text('...', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+    );
+  }
+
+  Widget _pageButton({required IconData icon, VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: AppColors.cardLight,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Icon(
+          icon,
+          size: 18,
+          color: onTap != null
+              ? AppColors.textPrimary
+              : AppColors.textSecondary.withValues(alpha: 0.4),
+        ),
       ),
     );
   }
