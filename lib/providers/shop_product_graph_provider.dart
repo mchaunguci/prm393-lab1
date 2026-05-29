@@ -28,6 +28,11 @@ class ShopProductGraphProvider extends ChangeNotifier {
   GraphNode? _hoveredNode;
   Size _layoutSize = Size.zero;
 
+  // Giới hạn số sản phẩm hiển thị (null = tất cả) để giảm rối khi graph lớn.
+  int? _topN;
+  // Tập id node khớp từ khoá tìm kiếm (để highlight thay vì lọc bỏ).
+  Set<String> _matchedNodeIds = {};
+
   bool get isLoading => _isLoading;
   String? get error => _error;
   DateTime? get lastUpdated => _lastUpdated;
@@ -41,11 +46,26 @@ class ShopProductGraphProvider extends ChangeNotifier {
   GraphProductSizeMetric get productSizeMetric => _productSizeMetric;
   GraphNode? get selectedNode => _selectedNode;
   GraphNode? get hoveredNode => _hoveredNode;
+  int? get topN => _topN;
+  Set<String> get matchedNodeIds => _matchedNodeIds;
+  int get matchCount => _matchedNodeIds.length;
 
   int get shopNodeCount =>
       _nodes.where((n) => n.type == GraphNodeType.shop).length;
   int get productNodeCount =>
       _nodes.where((n) => n.type == GraphNodeType.product).length;
+
+  List<Product> productsForShop(int shopId) {
+    final products = _nodes
+        .where(
+          (n) =>
+              n.type == GraphNodeType.product && n.product?.shopId == shopId,
+        )
+        .map((n) => n.product!)
+        .toList();
+    products.sort((a, b) => b.soldCount.compareTo(a.soldCount));
+    return products;
+  }
 
   List<String> get locationOptions => const [
     'TP. Hồ Chí Minh',
@@ -115,6 +135,13 @@ class ShopProductGraphProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setTopN(int? value) {
+    _topN = value;
+    _selectedNode = null;
+    _rebuildGraph();
+    notifyListeners();
+  }
+
   void selectNode(GraphNode? node) {
     _selectedNode = node;
     notifyListeners();
@@ -172,20 +199,18 @@ class ShopProductGraphProvider extends ChangeNotifier {
       }).toSet();
     }
 
-    if (_searchQuery.isNotEmpty) {
-      final q = _searchQuery.toLowerCase();
-      shopIds = shopIds.where((id) {
-        final shop = shopById[id];
-        final name = _shopName(shop, id).toLowerCase();
-        if (name.contains(q)) return true;
-        return (productsByShop[id] ?? [])
-            .any((p) => p.name.toLowerCase().contains(q));
-      }).toSet();
-    }
-
-    final visibleProducts = filteredProducts
+    var visibleProducts = filteredProducts
         .where((p) => shopIds.contains(p.shopId))
         .toList();
+
+    // Giới hạn Top N sản phẩm theo metric đang chọn để giảm rối.
+    if (_topN != null && visibleProducts.length > _topN!) {
+      visibleProducts.sort(
+        (a, b) => _productMetricValue(b).compareTo(_productMetricValue(a)),
+      );
+      visibleProducts = visibleProducts.take(_topN!).toList();
+      shopIds = visibleProducts.map((p) => p.shopId).toSet();
+    }
 
     final shopMetrics = <int, double>{};
     for (final shopId in shopIds) {
@@ -198,12 +223,8 @@ class ShopProductGraphProvider extends ChangeNotifier {
             );
     }
 
-    final productMetrics = visibleProducts.map((p) {
-      if (_productSizeMetric == GraphProductSizeMetric.monthlySold) {
-        return p.monthlySoldCount.toDouble();
-      }
-      return p.rating > 0 ? p.rating : 0.5;
-    }).toList();
+    final productMetrics =
+        visibleProducts.map(_productMetricValue).toList();
 
     final shopNodes = <GraphNode>[];
     for (final shopId in shopIds) {
@@ -279,9 +300,34 @@ class ShopProductGraphProvider extends ChangeNotifier {
         )
         .toList();
 
+    _computeMatches();
+
     if (_layoutSize != Size.zero) {
       ForceLayout.apply(nodes: _nodes, edges: _edges, size: _layoutSize);
     }
+  }
+
+  void _computeMatches() {
+    if (_searchQuery.isEmpty) {
+      _matchedNodeIds = {};
+      return;
+    }
+    final q = _searchQuery.toLowerCase();
+    _matchedNodeIds = _nodes
+        .where((n) {
+          if (n.label.toLowerCase().contains(q)) return true;
+          final productName = n.product?.name.toLowerCase();
+          return productName != null && productName.contains(q);
+        })
+        .map((n) => n.id)
+        .toSet();
+  }
+
+  double _productMetricValue(Product p) {
+    if (_productSizeMetric == GraphProductSizeMetric.monthlySold) {
+      return p.monthlySoldCount.toDouble();
+    }
+    return p.rating > 0 ? p.rating : 0.5;
   }
 
   bool _matchesFilters(Product product) {
@@ -310,10 +356,11 @@ class ShopProductGraphProvider extends ChangeNotifier {
           ? AppColors.blue.withValues(alpha: 0.85)
           : AppColors.cardLight;
     }
-    return _locationColor(locationGroup).withValues(alpha: 0.75);
+    return productLocationColor(locationGroup);
   }
 
-  Color _locationColor(String group) {
+  /// Màu shop theo khu vực — đậm, bão hòa.
+  static Color shopLocationColor(String group) {
     switch (group) {
       case 'TP. Hồ Chí Minh':
         return AppColors.blue;
@@ -325,6 +372,14 @@ class ShopProductGraphProvider extends ChangeNotifier {
         return AppColors.textSecondary;
     }
   }
+
+  /// Màu SP theo khu vực — pastel cùng hue với shop, tránh trùng màu.
+  static Color productLocationColor(String group) {
+    final shop = shopLocationColor(group);
+    return Color.lerp(shop, Colors.white, 0.58)!;
+  }
+
+  Color _locationColor(String group) => shopLocationColor(group);
 
   double _scaleRadius(
     double value,
