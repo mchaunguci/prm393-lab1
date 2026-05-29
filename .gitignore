@@ -43,3 +43,10 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Shopee crawl (local deps, không commit)
+shopee-db/scripts/pydeps/
+shopee-db/scripts/.venv/
+.tmp/
+.pip-cache/
+.playwright-browsers/

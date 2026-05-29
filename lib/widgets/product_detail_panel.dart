@@ -158,22 +158,26 @@ class ProductDetailPanel extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  provider.shopNameFor(product.shopId),
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 13,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    provider.shopNameFor(product.shopId),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                    ),
                   ),
-                ),
-                if (product.isOfficialShop)
-                  const Text(
-                    'Official Store',
-                    style: TextStyle(color: AppColors.blue, fontSize: 11),
-                  ),
-              ],
+                  if (product.isOfficialShop)
+                    const Text(
+                      'Official Store',
+                      style: TextStyle(color: AppColors.blue, fontSize: 11),
+                    ),
+                ],
+              ),
             ),
           ],
         ),

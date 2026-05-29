@@ -194,4 +194,72 @@ class Product {
       extractedAt: (d['extracted_at'] as Timestamp?)?.toDate(),
     );
   }
+
+  static double _parsePrice(dynamic value) {
+    if (value == null) return 0;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value.toString()) ?? 0;
+  }
+
+  static DateTime? _parseDate(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    final text = value.toString().trim();
+    if (text.isEmpty) return null;
+    return DateTime.tryParse(text);
+  }
+
+  /// JSON từ script crawl Python (field `id`, `shopid`, price dạng string).
+  factory Product.fromCrawlJson(Map<String, dynamic> d) {
+    final images = _parseImageUrls(d['images']);
+    final variationsImages = _parseImageUrls(d['variations_images']);
+
+    return Product(
+      productId: (d['id'] as num?)?.toInt() ?? 0,
+      shopId: (d['shopid'] as num?)?.toInt() ?? 0,
+      categoryId: (d['category'] as num?)?.toInt(),
+      name: d['name']?.toString() ?? '',
+      url: d['url']?.toString() ?? '',
+      thumbnailUrl: _resolveThumbnailUrl(d, images),
+      images: images,
+      variationsImages: variationsImages,
+      price: _parsePrice(d['price']),
+      priceMax: _parsePrice(d['price_max']),
+      priceMin: _parsePrice(d['price_min']),
+      priceBeforeDiscount: _parsePrice(d['price_before_discount']),
+      originalPrice: _parsePrice(d['original_price']),
+      discount: (d['discount'] as num?)?.toInt() ?? 0,
+      discountText: d['discount_text']?.toString(),
+      rating: (d['rating'] as num?)?.toDouble() ?? 0,
+      ratingCount: (d['rating_count'] as num?)?.toInt() ?? 0,
+      star1Count: (d['star_1_count'] as num?)?.toInt() ?? 0,
+      star2Count: (d['star_2_count'] as num?)?.toInt() ?? 0,
+      star3Count: (d['star_3_count'] as num?)?.toInt() ?? 0,
+      star4Count: (d['star_4_count'] as num?)?.toInt() ?? 0,
+      star5Count: (d['star_5_count'] as num?)?.toInt() ?? 0,
+      soldCount: (d['sold_count'] as num?)?.toInt() ?? 0,
+      soldCountText: d['sold_count_text']?.toString(),
+      monthlySoldCount: (d['monthly_sold_count'] as num?)?.toInt() ?? 0,
+      likedCount: (d['liked_count'] as num?)?.toInt() ?? 0,
+      colors: d['colors']?.toString(),
+      sizes: d['sizes']?.toString(),
+      variations: d['variations']?.toString(),
+      isAdult: d['is_adult'] == true,
+      isServiceByShopee: d['is_service_by_shopee'] == true,
+      isShopeeChoice: d['is_shopee_choice'] == true,
+      isOnFlashSale: d['is_on_flash_sale'] == true,
+      isOfficialShop: d['is_official_shop'] == true,
+      isPreferredPlusSeller: d['is_preferred_plus_seller'] == true,
+      isLowestPrice: d['is_lowest_price'] == true,
+      isLiveStreamingPrice: d['is_live_streaming_price'] as bool?,
+      isMart: d['is_mart'] == true,
+      canUseCod: d['can_use_cod'] != false,
+      canUseWholesale: d['can_use_wholesale'] == true,
+      hasLowestPriceGuarantee: d['has_lowest_price_guarantee'] == true,
+      showFreeShipping: d['show_free_shipping'] == true,
+      shopeeCreatedAt: _parseDate(d['created_time']),
+      sourceUrl: d['source_url']?.toString(),
+      extractedAt: _parseDate(d['extracted_at']),
+    );
+  }
 }

@@ -1,4 +1,6 @@
 .env
+cookies.txt
+.venv/
 __pycache__/
 *.pyc
 *-firebase-adminsdk-*.json

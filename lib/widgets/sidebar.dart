@@ -82,6 +82,12 @@ class Sidebar extends StatelessWidget {
             isSelected: selectedIndex == 3,
             onTap: () => onItemSelected(3),
           ),
+          _NavItem(
+            icon: Icons.manage_search,
+            label: 'Tìm keyword',
+            isSelected: selectedIndex == 4,
+            onTap: () => onItemSelected(4),
+          ),
           const Spacer(),
         ],
       ),

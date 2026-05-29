@@ -97,6 +97,57 @@ cp new_file.json data/
 docker compose run --rm importer
 ```
 
+## Crawl dữ liệu mới từ Shopee
+
+Playwright MCP **không phù hợp** crawl hàng loạt (Shopee chặn bot). Dùng script gọi API nội bộ + **cookie từ browser**.
+
+### Bước 1: Lấy Cookie
+
+1. Mở **Chrome** → vào [shopee.vn](https://shopee.vn) (login nếu cần)
+2. **F12** → tab **Network** → reload trang
+3. Chọn request `search_items` hoặc bất kỳ request `api/v4/...`
+4. Copy toàn bộ header **Cookie**
+5. Lưu vào `shopee-db/cookies.txt` (file này không commit)
+
+### Bước 2: Cài dependencies (dùng venv — Ubuntu không cho pip global)
+
+```bash
+cd shopee-db/scripts
+chmod +x setup_venv.sh
+./setup_venv.sh
+source .venv/bin/activate
+```
+
+### Bước 3: Chạy crawler
+
+```bash
+python crawl_shopee.py --keyword "rtx5090" --limit 60
+# Đầy đủ ảnh + variations (chậm hơn):
+python crawl_shopee.py --keyword "rtx5090" --limit 60 --with-details
+```
+
+Output: `data/SHOPEE_<uuid>_<count>.json`
+
+### Bước 4: Chạy API cho Flutter app (tab Tìm keyword)
+
+```bash
+cd shopee-db/scripts
+python3 search_api.py
+# API: http://127.0.0.1:8765/api/search?keyword=rtx5090&limit=60
+```
+
+Flutter tab **Tìm keyword** → chọn **Crawl Python** → nhập keyword → Phân tích.
+
+Cần `cookies.txt` hợp lệ + `playwright install chromium`.
+
+### Bước 5: Import lên Firestore
+
+```bash
+python import_firestore.py ../data/SHOPEE_xxx.json ../prm-shopee-be-firebase-adminsdk-xxx.json
+```
+
+> Cookie hết hạn sau vài ngày/tuần — copy lại nếu API trả lỗi `90309999` hoặc HTTP 403.
+
 ## Import thủ công (không dùng Docker)
 
 ```bash
